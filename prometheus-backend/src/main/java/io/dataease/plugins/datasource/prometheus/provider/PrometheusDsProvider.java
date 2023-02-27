@@ -1,4 +1,4 @@
-package io.dataease.plugins.datasource.kingbase.provider;
+package io.dataease.plugins.datasource.prometheus.provider;
 
 import com.google.gson.Gson;
 import io.dataease.plugins.common.base.domain.DeDriver;
@@ -24,13 +24,13 @@ import java.util.Properties;
 
 
 @Component()
-public class KingbaseDsProvider extends DefaultJdbcProvider {
+public class PrometheusDsProvider extends DefaultJdbcProvider {
     @Resource
     private DeDriverMapper deDriverMapper;
 
     @Override
     public String getType() {
-        return "kingbase";
+        return "prometheus";
     }
 
     @Override
@@ -43,8 +43,8 @@ public class KingbaseDsProvider extends DefaultJdbcProvider {
      */
     @Override
     public Connection getConnection(DatasourceRequest datasourceRequest) throws Exception {
-        KingbaseConfig kingbaseConfig = new Gson().fromJson(datasourceRequest.getDatasource().getConfiguration(),
-                KingbaseConfig.class);
+        PrometheusConfig kingbaseConfig = new Gson().fromJson(datasourceRequest.getDatasource().getConfiguration(),
+                PrometheusConfig.class);
 
         String defaultDriver = kingbaseConfig.getDriver();
         String customDriver = kingbaseConfig.getCustomDriver();
@@ -241,8 +241,8 @@ public class KingbaseDsProvider extends DefaultJdbcProvider {
      */
     @Override
     public String getTablesSql(DatasourceRequest datasourceRequest) throws Exception {
-        KingbaseConfig kingbaseConfig = new Gson().fromJson(datasourceRequest.getDatasource().getConfiguration(),
-                KingbaseConfig.class);
+        PrometheusConfig kingbaseConfig = new Gson().fromJson(datasourceRequest.getDatasource().getConfiguration(),
+                PrometheusConfig.class);
         if (StringUtils.isEmpty(kingbaseConfig.getSchema())) {
             throw new Exception("Database schema is empty.");
         }

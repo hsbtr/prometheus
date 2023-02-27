@@ -1,11 +1,11 @@
-package io.dataease.plugins.datasource.kingbase.query;
+package io.dataease.plugins.datasource.prometheus.query;
 
 
 import io.dataease.plugins.common.constants.datasource.SQLConstants;
 
 import static io.dataease.plugins.common.constants.DatasourceTypes.oracle;
 
-public class KingbaseConstants extends SQLConstants {
+public class PrometheusConstants extends SQLConstants {
 
     public static final String KEYWORD_TABLE = oracle.getKeywordPrefix() + "%s" + oracle.getKeywordSuffix();
 

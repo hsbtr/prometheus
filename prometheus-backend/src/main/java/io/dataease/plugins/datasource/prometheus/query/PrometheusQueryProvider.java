@@ -1,6 +1,5 @@
-package io.dataease.plugins.datasource.kingbase.query;
+package io.dataease.plugins.datasource.prometheus.query;
 
-import cn.hutool.json.JSONArray;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
@@ -20,7 +19,7 @@ import io.dataease.plugins.common.dto.sqlObj.SQLObj;
 import io.dataease.plugins.common.request.chart.ChartExtFilterRequest;
 import io.dataease.plugins.common.request.permission.DataSetRowPermissionsTreeDTO;
 import io.dataease.plugins.common.request.permission.DatasetRowPermissionsTreeItem;
-import io.dataease.plugins.datasource.kingbase.provider.KingbaseConfig;
+import io.dataease.plugins.datasource.prometheus.provider.PrometheusConfig;
 import io.dataease.plugins.datasource.entity.Dateformat;
 import io.dataease.plugins.datasource.entity.JdbcConfiguration;
 import io.dataease.plugins.datasource.entity.PageInfo;
@@ -45,7 +44,7 @@ import java.util.stream.Collectors;
 import static io.dataease.plugins.common.constants.datasource.SQLConstants.TABLE_ALIAS_PREFIX;
 
 @Component()
-public class KingbaseQueryProvider extends QueryProvider {
+public class PrometheusQueryProvider extends QueryProvider {
 
     @Resource
     private DatasetTableFieldMapper datasetTableFieldMapper;
@@ -1074,7 +1073,7 @@ public class KingbaseQueryProvider extends QueryProvider {
             stringBuilder.append("\"").append(f.getOriginName()).append("\"");
             return stringBuilder.toString();
         }).toArray(String[]::new);
-        KingbaseConfig kingbaseConfig = new Gson().fromJson(ds.getConfiguration(), KingbaseConfig.class);
+        PrometheusConfig kingbaseConfig = new Gson().fromJson(ds.getConfiguration(), PrometheusConfig.class);
         /*return MessageFormat.format("SELECT {0} FROM {1}", StringUtils.join(array, ","),
                 kingbaseConfig.getSchema() + ".\"" + table + "\"");*/
         return MessageFormat.format("SELECT {0} FROM {1}", StringUtils.join(array, ","),
