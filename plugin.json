@@ -1,0 +1,13 @@
+{
+    "name":"prometheus数据源插件测试版",
+    "free":0,
+    "store":"thirdpart",
+    "cost":0,
+    "category":"thirdpart",
+    "descript":"prometheus数据源插件测试版",
+    "version":"1.18.3",
+    "creator":"Mye",
+    "moduleName":"prometheus-backend",
+    "require":"1.17.0",
+    "dsType":"prometheus"
+}
