@@ -10,4 +10,5 @@
     "moduleName":"prometheus-backend",
     "require":"1.17.0",
     "dsType":"prometheus"
+
 }
