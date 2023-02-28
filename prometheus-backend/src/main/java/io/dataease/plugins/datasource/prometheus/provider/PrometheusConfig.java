@@ -1,4 +1,4 @@
-package io.dataease.plugins.datasource.kingbase.provider;
+package io.dataease.plugins.datasource.prometheus.provider;
 
 import io.dataease.plugins.datasource.entity.JdbcConfiguration;
 import lombok.Getter;
@@ -9,7 +9,7 @@ import lombok.Setter;
  */
 @Getter
 @Setter
-public class KingbaseConfig extends JdbcConfiguration {
+public class PrometheusConfig extends JdbcConfiguration {
 
     private String driver = "com.kingbase8.Driver";//驱动类名
     private String extraParams;

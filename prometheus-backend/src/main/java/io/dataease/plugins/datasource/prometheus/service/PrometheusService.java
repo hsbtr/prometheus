@@ -1,4 +1,4 @@
-package io.dataease.plugins.datasource.kingbase.service;
+package io.dataease.plugins.datasource.prometheus.service;
 
 import io.dataease.plugins.common.constants.DatabaseClassification;
 import io.dataease.plugins.common.constants.DatasourceCalculationMode;
@@ -12,7 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Service
-public class KingbaseService extends DatasourceService {
+public class PrometheusService extends DatasourceService {
 
 
     /**
@@ -21,7 +21,7 @@ public class KingbaseService extends DatasourceService {
     @Override
     public List<String> components() {
         List<String> result = new ArrayList<>();
-        result.add("kingbase");
+        result.add("prometheus");
         return result;
     }
 
@@ -53,12 +53,12 @@ public class KingbaseService extends DatasourceService {
     @Override
     public DataSourceType getDataSourceType() {
         DataSourceType dataSourceType = new DataSourceType("prometheus", "prometheus", true, "",
-                DatasourceCalculationMode.DIRECT_AND_SYNC, true);
+                DatasourceCalculationMode.DIRECT, false);
         dataSourceType.setKeywordPrefix("\"");
         dataSourceType.setKeywordSuffix("\"");
         dataSourceType.setAliasPrefix("\"");
         dataSourceType.setAliasSuffix("\"");
-        dataSourceType.setDatabaseClassification(DatabaseClassification.OLTP);
+        dataSourceType.setDatabaseClassification(DatabaseClassification.OTHER);
         return dataSourceType;
     }
 
