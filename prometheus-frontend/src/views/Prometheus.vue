@@ -20,9 +20,9 @@
             <el-input :placeholder="$t('enter_the_port')" v-model="form.configuration.port" autocomplete="off"/>
           </el-form-item>
 
-          <el-form-item :label="$t('dataBase')" prop="configuration.dataBase">
+<!--          <el-form-item :label="$t('dataBase')" prop="configuration.dataBase">
             <el-input v-model="form.configuration.dataBase" autocomplete="off"/>
-          </el-form-item>
+          </el-form-item>-->
 
           <el-form-item :label="$t('username')" prop="configuration.username">
             <el-input :placeholder="$t('one_user_name')" v-model="form.configuration.username" autocomplete="off"/>
@@ -86,8 +86,8 @@ export default {
         'configuration.host': [{required: true, message: this.$t('commons.required'), trigger: 'blur'}],
         'configuration.port': [{required: true, message: this.$t('commons.required'), trigger: 'blur'}],
         'configuration.dataBase': [{required: true, message: this.$t('commons.required'), trigger: 'blur'}],
-        'configuration.username': [{required: true, message: this.$t('commons.required'), trigger: 'blur'}],
-        'configuration.password': [{required: true, message: this.$t('commons.required'), trigger: 'blur'}]
+        // 'configuration.username': [{required: true, message: this.$t('commons.required'), trigger: 'blur'}],
+        // 'configuration.password': [{required: true, message: this.$t('commons.required'), trigger: 'blur'}]
       },
       canEdit: false,
       originConfiguration: {},
