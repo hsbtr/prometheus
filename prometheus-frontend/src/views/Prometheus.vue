@@ -1,6 +1,5 @@
 <template xmlns:v-slot="http://www.w3.org/1999/XSL/Transform">
   <div>
-    12345
     <el-row>
       <el-col>
         <el-form
@@ -63,18 +62,20 @@ export default {
       type: Object,
       default() {
         return {
-          configuration: {
-            initialPoolSize: 5,
-            extraParams: '',
-            minPoolSize: 5,
-            maxPoolSize: 50,
-            maxIdleTime: 30,
-            acquireIncrement: 5,
-            idleConnectionTestPeriod: 5,
-            queryTimeout: 30,
-            connectTimeout: 5
+          form: {
+            configuration: {
+              initialPoolSize: 5,
+              extraParams: '',
+              minPoolSize: 5,
+              maxPoolSize: 50,
+              maxIdleTime: 30,
+              acquireIncrement: 5,
+              idleConnectionTestPeriod: 5,
+              queryTimeout: 30,
+              connectTimeout: 5
+            },
+            apiConfiguration: []
           },
-          apiConfiguration: []
         }
       }
     },
@@ -97,8 +98,7 @@ export default {
   },
   computed: {
     form() {
-      console.log(this.obj);
-      return this.obj.form || { configuration: {} }
+      return this.obj.form
     },
     disabled() {
       return this.obj.disabled
