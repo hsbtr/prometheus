@@ -2,7 +2,6 @@
   <div>
     <el-row>
       <el-col>
-
         <el-form
             ref="DsForm"
             :model="form"
@@ -32,22 +31,19 @@
           <el-form-item :label="$t('password')" prop="configuration.password">
             <dePwd :placeholder="$t('input_a_password')" v-model="form.configuration.password"/>
           </el-form-item>
-
-
         </el-form>
-
       </el-col>
     </el-row>
   </div>
 </template>
 
 <script>
-import messages from '@/de-base/lang/messages'
-import dePwd from "./dePwd.vue";
+import messages from "../de-base/lang/messages";
+import DePwd from "./DePwd.vue";
 
 export default {
-  name: "prometheus",
-  components: {dePwd},
+  name: "Prometheus",
+  components: {DePwd},
   props: {
     method: String,
     request: {},
@@ -66,18 +62,20 @@ export default {
       type: Object,
       default() {
         return {
-          configuration: {
-            initialPoolSize: 5,
-            extraParams: '',
-            minPoolSize: 5,
-            maxPoolSize: 50,
-            maxIdleTime: 30,
-            acquireIncrement: 5,
-            idleConnectionTestPeriod: 5,
-            queryTimeout: 30,
-            connectTimeout: 5
+          form: {
+            configuration: {
+              initialPoolSize: 5,
+              extraParams: '',
+              minPoolSize: 5,
+              maxPoolSize: 50,
+              maxIdleTime: 30,
+              acquireIncrement: 5,
+              idleConnectionTestPeriod: 5,
+              queryTimeout: 30,
+              connectTimeout: 5
+            },
+            apiConfiguration: []
           },
-          apiConfiguration: []
         }
       }
     },
@@ -119,36 +117,36 @@ export default {
         callBack: callBack
       }
       this.$emit('execute-axios', param)
+    },
+    getSchema() {
+      this.$refs["DsForm"].validate(valid => {
+        if (valid) {
+          const data = JSON.parse(JSON.stringify(this.form))
+          data.configuration = JSON.stringify(data.configuration)
+          this.executeAxios('/datasource/getSchema/', 'post', data, res => {
+            this.schemas = res.data
+          })
+        } else {
+          return false
+        }
+      })
+    },
+    validate() {
+      let status = null;
+      this.$refs["DsForm"].validate((val) => {
+        if (val) {
+          status = true
+        } else {
+          status = false
+        }
+      })
+
+      if (!this.form.configuration.schema) {
+        this.$message.error(this.$t('please_choose_schema'))
+        status = false
+      }
+      return status
     }
-    // getSchema() {
-    //   this.$refs["DsForm"].validate(valid => {
-    //     if (valid) {
-    //       const data = JSON.parse(JSON.stringify(this.form))
-    //       data.configuration = JSON.stringify(data.configuration)
-    //       this.executeAxios('/datasource/getSchema/', 'post', data, res => {
-    //         this.schemas = res.data
-    //       })
-    //     } else {
-    //       return false
-    //     }
-    //   })
-    // }
-    // validate() {
-    //   let status = null;
-    //   this.$refs["DsForm"].validate((val) => {
-    //     if (val) {
-    //       status = true
-    //     } else {
-    //       status = false
-    //     }
-    //   })
-    //
-    //   if (!this.form.configuration.schema) {
-    //     this.$message.error(this.$t('please_choose_schema'))
-    //     status = false
-    //   }
-    //   return status
-    // }
   }
 }
 </script>

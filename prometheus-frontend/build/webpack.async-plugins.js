@@ -10,7 +10,7 @@ function resolve (dir) {
 module.exports = {
   mode: 'development',
   entry: {
-    'prometheus': resolve('/src/views/prometheus.vue')
+    'prometheus': resolve('/src/views/Prometheus.vue')
   },
   output: {
     path: resolve('/static/'),
