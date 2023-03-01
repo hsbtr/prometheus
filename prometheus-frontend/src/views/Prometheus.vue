@@ -141,10 +141,10 @@ export default {
         }
       })
 
-      if (!this.form.configuration.schema) {
-        this.$message.error(this.$t('please_choose_schema'))
-        status = false
-      }
+      // if (!this.form.configuration.schema) {
+      //   this.$message.error(this.$t('please_choose_schema'))
+      //   status = false
+      // }
       return status
     }
   }
