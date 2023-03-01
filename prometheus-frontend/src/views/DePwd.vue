@@ -24,13 +24,6 @@
 </template>
 
 <script>
-// 11222545121  55542225
-
-
-
-
-
-
 export default {
   name: "DePwd",
   inject: {
