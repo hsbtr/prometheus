@@ -1,6 +1,14 @@
 package io.dataease.plugins.datasource.prometheus.provider;
 
+import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.convert.Convert;
+import cn.hutool.core.util.NumberUtil;
+import cn.hutool.core.util.ObjectUtil;
+import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONUtil;
+import com.alibaba.fastjson.JSON;
 import com.google.gson.Gson;
+import io.dataease.plugins.common.base.domain.Datasource;
 import io.dataease.plugins.common.base.domain.DeDriver;
 import io.dataease.plugins.common.base.mapper.DeDriverMapper;
 import io.dataease.plugins.common.constants.DatasourceTypes;
@@ -9,6 +17,8 @@ import io.dataease.plugins.common.dto.datasource.TableField;
 import io.dataease.plugins.common.exception.DataEaseException;
 import io.dataease.plugins.common.request.datasource.DatasourceRequest;
 import io.dataease.plugins.datasource.entity.JdbcConfiguration;
+import io.dataease.plugins.datasource.prometheus.engine.okhttp.HttpClientConfig;
+import io.dataease.plugins.datasource.prometheus.engine.okhttp.HttpClientUtils;
 import io.dataease.plugins.datasource.provider.DefaultJdbcProvider;
 import io.dataease.plugins.datasource.provider.ExtendedJdbcClassLoader;
 import org.apache.commons.lang3.StringUtils;
@@ -16,11 +26,11 @@ import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
 import java.lang.reflect.Method;
+import java.net.URL;
+import java.net.URLConnection;
+import java.nio.charset.StandardCharsets;
 import java.sql.*;
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Properties;
+import java.util.*;
 
 
 @Component()
@@ -43,16 +53,16 @@ public class PrometheusDsProvider extends DefaultJdbcProvider {
      */
     @Override
     public Connection getConnection(DatasourceRequest datasourceRequest) throws Exception {
-        PrometheusConfig kingbaseConfig = new Gson().fromJson(datasourceRequest.getDatasource().getConfiguration(),
+        PrometheusConfig prometheusConfig = new Gson().fromJson(datasourceRequest.getDatasource().getConfiguration(),
                 PrometheusConfig.class);
 
-        String defaultDriver = kingbaseConfig.getDriver();
-        String customDriver = kingbaseConfig.getCustomDriver();
+        String defaultDriver = prometheusConfig.getDriver();
+        String customDriver = prometheusConfig.getCustomDriver();
 
-        String url = kingbaseConfig.getJdbc();
+        String url = prometheusConfig.getJdbc();
         Properties props = new Properties();
         DeDriver deDriver = null;
-        if (StringUtils.isNotEmpty(kingbaseConfig.getAuthMethod()) && kingbaseConfig.getAuthMethod().equalsIgnoreCase("kerberos")) {
+        if (StringUtils.isNotEmpty(prometheusConfig.getAuthMethod()) && prometheusConfig.getAuthMethod().equalsIgnoreCase("kerberos")) {
             System.setProperty("java.security.krb5.conf", "/opt/dataease/conf/krb5.conf");
             ExtendedJdbcClassLoader classLoader;
             if (isDefaultClassLoader(customDriver)) {
@@ -72,13 +82,13 @@ public class PrometheusDsProvider extends DefaultJdbcProvider {
             Method loginUserFromKeytab = UserGroupInformationClass.getMethod("loginUserFromKeytab", String.class,
                     String.class);
             setConfiguration.invoke(null, obj);
-            loginUserFromKeytab.invoke(null, kingbaseConfig.getUsername(),
-                    "/opt/dataease/conf/" + kingbaseConfig.getPassword());
+            loginUserFromKeytab.invoke(null, prometheusConfig.getUsername(),
+                    "/opt/dataease/conf/" + prometheusConfig.getPassword());
         } else {
-            if (StringUtils.isNotBlank(kingbaseConfig.getUsername())) {
-                props.setProperty("user", kingbaseConfig.getUsername());
-                if (StringUtils.isNotBlank(kingbaseConfig.getPassword())) {
-                    props.setProperty("password", kingbaseConfig.getPassword());
+            if (StringUtils.isNotBlank(prometheusConfig.getUsername())) {
+                props.setProperty("user", prometheusConfig.getUsername());
+                if (StringUtils.isNotBlank(prometheusConfig.getPassword())) {
+                    props.setProperty("password", prometheusConfig.getPassword());
                 }
             }
         }
@@ -223,18 +233,84 @@ public class PrometheusDsProvider extends DefaultJdbcProvider {
      * 检验数据源状态
      */
     @Override
-    public String checkStatus(DatasourceRequest datasourceRequest) throws Exception {
-        String queryStr = getTablesSql(datasourceRequest);
-        JdbcConfiguration jdbcConfiguration =
-                new Gson().fromJson(datasourceRequest.getDatasource().getConfiguration(), JdbcConfiguration.class);
-        int queryTimeout = Math.max(jdbcConfiguration.getQueryTimeout(), 0);
-        try (Connection con = getConnection(datasourceRequest); Statement statement = getStatement(con, queryTimeout); ResultSet resultSet = statement.executeQuery(queryStr)) {
-        } catch (Exception e) {
-            e.printStackTrace();
-            DataEaseException.throwException(e.getMessage());
+    public String checkStatus(DatasourceRequest datasourceRequest){
+
+        if (ObjectUtil.isNull(datasourceRequest)){
+            return "Error";
         }
-        return "Success";
+
+        Datasource datasource = datasourceRequest.getDatasource();
+        if (ObjectUtil.isNull(datasource)){
+            return "Error";
+        }
+
+        String configuration = datasource.getConfiguration();
+        if (StrUtil.isBlank(configuration)){
+            return "Error";
+        }
+
+        HttpClientConfig config = new HttpClientConfig();
+
+        Map<String,Object> maps = (Map<String,Object>) JSON.parse(configuration);
+        String headData = getConnectionParam(config, maps);
+
+
+        String resultData;
+        if (StrUtil.isNotBlank(headData)){
+            resultData = HttpClientUtils.doGet(config, headData);
+        }else {
+            resultData = HttpClientUtils.doGet(config);
+        }
+
+        if (StrUtil.isNotBlank(resultData)){
+            return "Success";
+        }else {
+            return "Error";
+        }
     }
+
+    private String getConnectionParam(HttpClientConfig config, Map<String, Object> maps) {
+        String headData = null;
+        if (CollUtil.isNotEmpty(maps) && maps.containsKey("host") && maps.containsKey("port")){
+            String host = null;
+            Integer port = null;
+            String username = null;
+            String password = null;
+            if (maps.containsKey("host")){
+                host = Convert.toStr(maps.get("host"));
+            }
+
+            if (maps.containsKey("port")){
+                port = Convert.toInt(maps.get("port"));
+            }
+
+            if (maps.containsKey("username")){
+                username = Convert.toStr(maps.get("username"));
+            }
+
+            if (maps.containsKey("password")){
+                password = Convert.toStr(maps.get("password"));
+            }
+
+            if (StrUtil.isNotBlank(host) && ObjectUtil.isNotNull(port)){
+                if (host.startsWith("http://")){
+                    String url = host + ":" + port + "/metrics";
+                    config.setMasterUrl(url);
+                }else {
+                    String url = "http://" + host + ":" + port + "/metrics";
+                    config.setMasterUrl(url);
+                }
+            }
+
+            if (StrUtil.isNotBlank(username) && StrUtil.isNotBlank(password)){
+                String data = username+":"+password;
+                String base64encodedString = Base64.getEncoder().encodeToString(data.getBytes(StandardCharsets.UTF_8));
+                headData = "Basic " + base64encodedString;
+            }
+        }
+        return headData;
+    }
+
 
     /**
      * 显示对应的表的 SQL 语句
