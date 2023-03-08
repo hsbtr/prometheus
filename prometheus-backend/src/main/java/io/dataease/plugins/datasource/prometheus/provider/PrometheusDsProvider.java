@@ -228,26 +228,18 @@ public class PrometheusDsProvider extends DefaultJdbcProvider {
                         metric.forEach((key,value) ->{
                             TableField tableField = new TableField();
                             tableField.setFieldName(key);
+                            tableField.setRemarks(key);
                             if (value.getClass().equals(String.class)){
-                                tableField.setFieldType("STRING");
+                                tableField.setFieldType("0");
                             }
                             if (value.getClass().equals(Integer.class)){
-                                tableField.setFieldType("INTEGER");
-                            }
-                            if (value.getClass().equals(Double.class)){
-                                tableField.setFieldType("DOUBLE");
+                                tableField.setFieldType("2");
                             }
                             if (value.getClass().equals(Float.class)){
-                                tableField.setFieldType("FLOAT");
-                            }
-                            if (value.getClass().equals(Long.class)){
-                                tableField.setFieldType("LONG");
-                            }
-                            if (value.getClass().equals(Character.class)){
-                                tableField.setFieldType("CHARACTER");
+                                tableField.setFieldType("3");
                             }
                             if (value.getClass().equals(Boolean.class)){
-                                tableField.setFieldType("BOOLEAN");
+                                tableField.setFieldType("4");
                             }
                             list.add(tableField);
                         });
