@@ -1,22 +1,17 @@
 package io.dataease.plugins.datasource.prometheus.provider;
 
 import cn.hutool.core.collection.CollUtil;
-import cn.hutool.core.convert.Convert;
 import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.core.util.StrUtil;
-import cn.hutool.json.JSONUtil;
-import com.alibaba.fastjson.JSON;
 import com.google.gson.Gson;
 import io.dataease.plugins.common.base.domain.Datasource;
 import io.dataease.plugins.common.base.domain.DeDriver;
 import io.dataease.plugins.common.base.mapper.DeDriverMapper;
-import io.dataease.plugins.common.constants.DatasourceTypes;
 import io.dataease.plugins.common.dto.datasource.TableDesc;
 import io.dataease.plugins.common.dto.datasource.TableField;
 import io.dataease.plugins.common.request.datasource.DatasourceRequest;
-import io.dataease.plugins.datasource.entity.JdbcConfiguration;
-import io.dataease.plugins.datasource.prometheus.engine.okhttp.HttpClientConfig;
-import io.dataease.plugins.datasource.prometheus.engine.okhttp.HttpClientUtils;
+import io.dataease.plugins.datasource.prometheus.dto.DatasourceDTO;
+import io.dataease.plugins.datasource.prometheus.engine.prometheus.PrometheusUtil;
 import io.dataease.plugins.datasource.prometheus.engine.prometheus.datasource.MetricsInfoData;
 import io.dataease.plugins.datasource.prometheus.engine.prometheus.datasource.MetricsInfoResp;
 import io.dataease.plugins.datasource.prometheus.engine.prometheus.datasource.MetricsInfoResult;
@@ -28,7 +23,6 @@ import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
 import java.lang.reflect.Method;
-import java.nio.charset.StandardCharsets;
 import java.sql.*;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -129,45 +123,31 @@ public class PrometheusDsProvider extends DefaultJdbcProvider {
     public List<TableDesc> getTables(DatasourceRequest datasourceRequest){
         List<TableDesc> tables = new ArrayList<>();
 
-        if (ObjectUtil.isNull(datasourceRequest)){
+        String error = checkDatasourceParam(datasourceRequest);
+        if (StrUtil.isNotBlank(error)){
             return tables;
         }
 
-        Datasource datasource = datasourceRequest.getDatasource();
-        if (ObjectUtil.isNull(datasource)){
+        DatasourceDTO dto = DatasourceDTO.convert(datasourceRequest);
+        if (ObjectUtil.isNull(dto)){
             return tables;
         }
 
-        String configuration = datasource.getConfiguration();
-        if (StrUtil.isBlank(configuration)){
+        MetricsResp metricsResp = PrometheusUtil.getTables(dto);
+        if (ObjectUtil.isNull(metricsResp)){
             return tables;
         }
 
-        HttpClientConfig config = new HttpClientConfig();
-
-        Map<String,Object> maps = (Map<String,Object>) JSON.parse(configuration);
-        String headData = getConnectionParam(config, maps,"/api/v1/label/__name__/values");
-
-        String result;
-        if (StrUtil.isNotBlank(headData)){
-            result = HttpClientUtils.doGet(config, headData);
-        }else {
-           result = HttpClientUtils.doGet(config);
-        }
-
-        if (StrUtil.isBlank(result)){
+        List<String> data = metricsResp.getData();
+        if (CollUtil.isEmpty(data)){
             return tables;
         }
 
-        MetricsResp metricsResp = JSONUtil.toBean(result, MetricsResp.class);
-
-        if (metricsResp.getStatus().equals("success") && CollUtil.isNotEmpty(metricsResp.getData())){
-            tables = metricsResp.getData().stream().filter(Objects::nonNull).map(s -> {
-                TableDesc desc = new TableDesc();
-                desc.setName(s);
-                return desc;
-            }).collect(Collectors.toList());
-        }
+        tables = metricsResp.getData().stream().filter(Objects::nonNull).map(s -> {
+            TableDesc desc = new TableDesc();
+            desc.setName(s);
+            return desc;
+        }).collect(Collectors.toList());
 
         return tables;
     }
@@ -179,72 +159,47 @@ public class PrometheusDsProvider extends DefaultJdbcProvider {
     public List<TableField> getTableFields(DatasourceRequest datasourceRequest){
         List<TableField> list = new LinkedList<>();
 
-        if (ObjectUtil.isNull(datasourceRequest)){
+        String error = checkDatasourceParam(datasourceRequest);
+        if (StrUtil.isNotBlank(error)){
             return list;
         }
 
-        Datasource datasource = datasourceRequest.getDatasource();
-        if (ObjectUtil.isNull(datasource)){
+        DatasourceDTO dto = DatasourceDTO.convert(datasourceRequest);
+        if (ObjectUtil.isNull(dto)){
             return list;
         }
 
-        String table = datasourceRequest.getTable();
-        if (StrUtil.isBlank(table)){
+        MetricsInfoResp metricsInfoResp = PrometheusUtil.getTableFields(dto);
+        if (ObjectUtil.isNull(metricsInfoResp)){
             return list;
         }
 
-        String configuration = datasource.getConfiguration();
-        if (StrUtil.isBlank(configuration)){
+        MetricsInfoData data = metricsInfoResp.getData();
+        if (ObjectUtil.isNull(data)){
             return list;
         }
-
-        HttpClientConfig config = new HttpClientConfig();
-        Map<String,Object> maps = (Map<String,Object>) JSON.parse(configuration);
-        long time = System.currentTimeMillis() / 1000;
-        String path = "/api/v1/query?query="+ table + "&time=" + time;
-        String headData = getConnectionParam(config, maps,path);
-
-
-        String result;
-        if (StrUtil.isNotBlank(headData)){
-            result = HttpClientUtils.doGet(config, headData);
-        }else {
-            result = HttpClientUtils.doGet(config);
-        }
-
-        if (StrUtil.isBlank(result)){
-            return list;
-        }
-
-        MetricsInfoResp metricsInfoResp = JSONUtil.toBean(result, MetricsInfoResp.class);
-
-        if (ObjectUtil.isNotNull(metricsInfoResp) && metricsInfoResp.getStatus().equals("success")){
-            MetricsInfoData data = metricsInfoResp.getData();
-            if (ObjectUtil.isNotNull(data)){
-                if (CollUtil.isNotEmpty(data.getResult()) && data.getResult().size() >= 1){
-                    MetricsInfoResult metricsInfoResult = data.getResult().get(0);
-                    Map<String, Object> metric = metricsInfoResult.getMetric();
-                    if (CollUtil.isNotEmpty(metric)){
-                        metric.forEach((key,value) ->{
-                            TableField tableField = new TableField();
-                            tableField.setFieldName(key);
-                            tableField.setRemarks(key);
-                            if (value.getClass().equals(String.class)){
-                                tableField.setFieldType("0");
-                            }
-                            if (value.getClass().equals(Integer.class)){
-                                tableField.setFieldType("2");
-                            }
-                            if (value.getClass().equals(Float.class)){
-                                tableField.setFieldType("3");
-                            }
-                            if (value.getClass().equals(Boolean.class)){
-                                tableField.setFieldType("4");
-                            }
-                            list.add(tableField);
-                        });
+        if (CollUtil.isNotEmpty(data.getResult()) && data.getResult().size() >= 1){
+            MetricsInfoResult metricsInfoResult = data.getResult().get(0);
+            Map<String, Object> metric = metricsInfoResult.getMetric();
+            if (CollUtil.isNotEmpty(metric)){
+                metric.forEach((key,value) ->{
+                    TableField tableField = new TableField();
+                    tableField.setFieldName(key);
+                    tableField.setRemarks(key);
+                    if (value.getClass().equals(String.class)){
+                        tableField.setFieldType("0");
                     }
-                }
+                    if (value.getClass().equals(Integer.class)){
+                        tableField.setFieldType("2");
+                    }
+                    if (value.getClass().equals(Float.class)){
+                        tableField.setFieldType("3");
+                    }
+                    if (value.getClass().equals(Boolean.class)){
+                        tableField.setFieldType("4");
+                    }
+                    list.add(tableField);
+                });
             }
         }
 
@@ -257,80 +212,42 @@ public class PrometheusDsProvider extends DefaultJdbcProvider {
     @Override
     public String checkStatus(DatasourceRequest datasourceRequest){
 
-        if (ObjectUtil.isNull(datasourceRequest)){
+        String error = checkDatasourceParam(datasourceRequest);
+        if (StrUtil.isNotBlank(error)){
+            return error;
+        }
+
+        DatasourceDTO dto = DatasourceDTO.convert(datasourceRequest);
+        if (ObjectUtil.isNull(dto)){
             return "Error";
+        }
+
+        String queryResult = PrometheusUtil.checkStatus(dto);
+
+        if (StrUtil.isBlank(queryResult)){
+            return "Error";
+        }
+
+        return "Success";
+    }
+
+    private String checkDatasourceParam(DatasourceRequest datasourceRequest) {
+        String error = null;
+        if (ObjectUtil.isNull(datasourceRequest)){
+            error =  "Error";
         }
 
         Datasource datasource = datasourceRequest.getDatasource();
         if (ObjectUtil.isNull(datasource)){
-            return "Error";
+            error =  "Error";
         }
 
         String configuration = datasource.getConfiguration();
         if (StrUtil.isBlank(configuration)){
-            return "Error";
+            error =  "Error";
         }
 
-        HttpClientConfig config = new HttpClientConfig();
-
-        Map<String,Object> maps = (Map<String,Object>) JSON.parse(configuration);
-        String headData = getConnectionParam(config, maps,"/metrics");
-
-
-        String resultData;
-        if (StrUtil.isNotBlank(headData)){
-            resultData = HttpClientUtils.doGet(config, headData);
-        }else {
-            resultData = HttpClientUtils.doGet(config);
-        }
-
-        if (StrUtil.isNotBlank(resultData)){
-            return "Success";
-        }else {
-            return "Error";
-        }
-    }
-
-    private String getConnectionParam(HttpClientConfig config, Map<String, Object> maps,String path) {
-        String headData = null;
-        if (CollUtil.isNotEmpty(maps) && maps.containsKey("host") && maps.containsKey("port")){
-            String host = null;
-            Integer port = null;
-            String username = null;
-            String password = null;
-            if (maps.containsKey("host")){
-                host = Convert.toStr(maps.get("host"));
-            }
-
-            if (maps.containsKey("port")){
-                port = Convert.toInt(maps.get("port"));
-            }
-
-            if (maps.containsKey("username")){
-                username = Convert.toStr(maps.get("username"));
-            }
-
-            if (maps.containsKey("password")){
-                password = Convert.toStr(maps.get("password"));
-            }
-
-            if (StrUtil.isNotBlank(host) && ObjectUtil.isNotNull(port)){
-                if (host.startsWith("http://")){
-                    String url = host + ":" + port + path;
-                    config.setMasterUrl(url);
-                }else {
-                    String url = "http://" + host + ":" + port + path;
-                    config.setMasterUrl(url);
-                }
-            }
-
-            if (StrUtil.isNotBlank(username) && StrUtil.isNotBlank(password)){
-                String data = username+":"+password;
-                String base64encodedString = Base64.getEncoder().encodeToString(data.getBytes(StandardCharsets.UTF_8));
-                headData = "Basic " + base64encodedString;
-            }
-        }
-        return headData;
+        return error;
     }
 
 
